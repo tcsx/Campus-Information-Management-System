@@ -1,37 +1,88 @@
 package com.tcsx.studentinfo.studentinformationsystem.entity;
 
+import java.util.HashMap;
+import java.util.Map.Entry;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class Student {
 	private Long studentId;
 	private String name;
 	private String image;
-	private String course;
-	private String program;
+	@JsonIgnore
+	private HashMap<Long, Course> courses;
+	private HashMap<Long, String> courseNames;
+	@JsonIgnore
+	private Program program;
+	private String programName;
 	
 	public Student() {}
-
-	public Student(Long studentId, String name, String image, String course, String program) {
+	
+	public Student(Long studentId, String name, String image, HashMap<Long, Course> courses, Program program) {
 		super();
 		this.studentId = studentId;
 		this.name = name;
 		this.image = image;
-		this.course = course;
+		this.courses = courses;
 		this.program = program;
+		setProgramName();
+		setCourseNames();
+	}
+	
+	public HashMap<Long, String> getCourseNames() {
+		return courseNames;
 	}
 
-	public String getCourse() {
-		return course;
+	public void setCourseNames(HashMap<Long, String> courseNames) {
+		this.courseNames = courseNames;
+	}
+	
+	public void setCourseNames() {
+		if(courses != null) {
+			courseNames = new HashMap<>();
+			for (Entry<Long, Course> entry: courses.entrySet()) {
+				courseNames.put(entry.getKey(), entry.getValue().getName());
+			}
+		}
 	}
 
-	public void setCourse(String course) {
-		this.course = course;
+	public String getProgramName() {
+		return programName;
 	}
 
-	public String getProgram() {
+	public void setProgramName(String programName) {
+		this.programName = programName;
+	}
+
+	public void setProgramName() {
+		if(program != null) this.programName = program.getName();
+	}
+
+	public Course getCourseById(long id) {
+		return courses.get(id);
+	}
+	
+	public Course deleteCourseById(long id) {
+		courseNames.remove(id);
+		return courses.remove(id);
+	}
+
+	public HashMap<Long, Course> getCourses() {
+		return courses;
+	}
+
+	public void setCourses(HashMap<Long, Course> courses) {
+		this.courses = courses;
+		setCourseNames();
+	}
+
+	public Program getProgram() {
 		return program;
 	}
 
-	public void setProgram(String program) {
+	public void setProgram(Program program) {
 		this.program = program;
+		setProgramName();
 	}
 
 	public Long getStudentId() {

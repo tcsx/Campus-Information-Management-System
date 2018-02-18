@@ -16,6 +16,18 @@ public class Program {
 		this.courses = courses;
 	}
 
+	public Course getCourseById(long id) {
+		return courses.get(id);
+	}
+	
+	public Course deleteCourseById(long id) {
+		return courses.remove(id);
+	}
+	
+	public Course addCourse(Course course) {
+		return courses.put(course.getId(), course);
+	}
+
 	public long getId() {
 		return id;
 	}

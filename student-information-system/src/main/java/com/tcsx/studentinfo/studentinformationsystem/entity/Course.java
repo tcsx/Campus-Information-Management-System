@@ -3,7 +3,7 @@ package com.tcsx.studentinfo.studentinformationsystem.entity;
 import java.util.HashMap;
 
 public class Course {
-	private long id;
+	private String id;
 	private String name;
 	private Board board;
 	private Roster roster;
@@ -12,7 +12,7 @@ public class Course {
 	
 	public Course() {}
 	
-	public Course(Long id, String name, Board board, Roster roster, HashMap<Long, Student> students,
+	public Course(String id, String name, Board board, Roster roster, HashMap<Long, Student> students,
 			HashMap<Long, Lecture> lectures) {
 		super();
 		this.id = id;
@@ -23,11 +23,11 @@ public class Course {
 		this.lectures = lectures;
 	}
 	
-	public Lecture getLectureById(long id) {
+	public Lecture getLectureById(Long id) {
 		return lectures.get(id);
 	}
 	
-	public Lecture deleteLectureById(long id) {
+	public Lecture deleteLectureById(Long id) {
 		return lectures.remove(id);
 	}
 	
@@ -38,19 +38,22 @@ public class Course {
 		return students.get(id);
 	}
 	
-	public Student deleteStudentById(long id) {
-		return students.remove(id);
+	public Student deleteStudentById(long studentId) {
+		Student student = students.get(studentId);
+		student.deleteCourseById(this.id);
+		return student;
 	}
 	
 	public Student addStudent(Student student) {
-		return students.put(student.getStudentId(), student);
+		student.addCourse(this);
+		return student;
 	}
 	
-	public long getId() {
+	public String getId() {
 		return id;
 	}
 
-	public void setId(long id) {
+	public void setId(String id) {
 		this.id = id;
 	}
 

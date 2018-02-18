@@ -2,11 +2,11 @@ package com.tcsx.studentinfo.studentinformationsystem.entity;
 
 public class Note {
 	private Long id;
-	private Long name;
+	private String name;
 	
 	public Note() {}
 
-	public Note(Long id, Long name) {
+	public Note(Long id, String name) {
 		super();
 		this.id = id;
 		this.name = name;
@@ -20,13 +20,13 @@ public class Note {
 		this.id = id;
 	}
 
-	public Long getName() {
+	public String getName() {
 		return name;
 	}
 
-	public void setName(Long name) {
+	public void setName(String name) {
 		this.name = name;
 	}
-	
-	
+
+
 }

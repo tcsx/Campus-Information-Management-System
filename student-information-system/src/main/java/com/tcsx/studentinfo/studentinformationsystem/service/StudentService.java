@@ -17,6 +17,7 @@ import com.tcsx.studentinfo.studentinformationsystem.exception.EntityNotFoundExc
 public class StudentService {
 	private HashMap<Long, Student> students = new HashMap<>();
 	
+	//sample data for tests
 	public StudentService() {
 		HashMap<String, Course> courses = new HashMap<>();
 		Student student = new Student(1L, "Lee", "/hehe", null, null);

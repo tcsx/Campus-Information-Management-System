@@ -22,6 +22,7 @@ public class ProgramService {
 	public ProgramService() {
 	}
 
+	//add sample data for tests
 	@Autowired
 	public ProgramService(StudentService studentService) {
 		this.setStudentService(studentService);

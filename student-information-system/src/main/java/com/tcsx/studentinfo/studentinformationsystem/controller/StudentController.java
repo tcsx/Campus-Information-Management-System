@@ -1,7 +1,6 @@
 package com.tcsx.studentinfo.studentinformationsystem.controller;
 
 import java.net.URI;
-import java.util.HashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,8 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import com.tcsx.studentinfo.studentinformationsystem.entity.Student;
+import com.tcsx.studentinfo.studentinformationsystem.model.Student;
 import com.tcsx.studentinfo.studentinformationsystem.service.StudentService;
+
+import io.swagger.annotations.ApiOperation;
 
 @RestController
 @RequestMapping("/students")
@@ -25,16 +26,19 @@ public class StudentController {
 	private StudentService studentService;
 	
 	@GetMapping
-	public  HashMap<Long, Student> getAllStudents() {
+	@ApiOperation(value = "Get All Students", notes = "Get all students in the database")
+	public  Iterable<Student> getAllStudents() {
 		return studentService.findAll();
 	}
 	
 	@GetMapping("/{id}")
-	public Student getStudent(@PathVariable long id) {
-		return studentService.getOne(id);
+	@ApiOperation(value = "Get Specified Student", notes = "Get the student specified by id")
+	public Student getStudent(@PathVariable String id) {
+		return studentService.findById(id);
 	}
 	
 	@PostMapping
+	@ApiOperation(value = "Add A Student")
 	public ResponseEntity<Object> createStudent(@RequestBody Student student) {
 		studentService.save(student);
 		
@@ -46,13 +50,15 @@ public class StudentController {
 	}
 	
 	@PutMapping("/{id}")
-	public void updateStudent(@RequestBody Student student, @PathVariable long id) {
+	@ApiOperation(value = "Update A Student")
+	public Student updateStudent(@RequestBody Student student, @PathVariable String id) {
 		studentService.deleteById(id);
-		studentService.save(student);
+		return studentService.save(student);
 	}
 	
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Object> deleteStudent(@PathVariable long id) {
+	@ApiOperation(value = "Delete A Student", notes = "Delete the student specified by id")
+	public ResponseEntity<Object> deleteStudent(@PathVariable String id) {
 		studentService.deleteById(id);
 		return ResponseEntity.noContent().build();
 	}

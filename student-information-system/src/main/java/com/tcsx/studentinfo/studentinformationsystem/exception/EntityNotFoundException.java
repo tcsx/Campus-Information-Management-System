@@ -11,7 +11,8 @@ public class EntityNotFoundException extends RuntimeException {
 	}
 
 	public <T> EntityNotFoundException(Class<T> type, String id) {
-		super(type.	getSimpleName() + " of id " + id + " not found.");
+		super(type.getSimpleName() + " of id " + id + " not found.");
+		printStackTrace();
 	}
 
 	public <T> EntityNotFoundException(Class<T> type, long id) {

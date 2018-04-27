@@ -1,181 +1,134 @@
 package com.tcsx.studentinfo.studentinformationsystem.service;
 
+
+
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.tcsx.studentinfo.studentinformationsystem.entity.Course;
-import com.tcsx.studentinfo.studentinformationsystem.entity.Lecture;
-import com.tcsx.studentinfo.studentinformationsystem.entity.Material;
-import com.tcsx.studentinfo.studentinformationsystem.entity.Note;
-import com.tcsx.studentinfo.studentinformationsystem.entity.Program;
-import com.tcsx.studentinfo.studentinformationsystem.entity.Student;
+import com.amazonaws.services.sns.AmazonSNSClient;
+import com.amazonaws.services.sns.model.CreateTopicResult;
+import com.tcsx.studentinfo.studentinformationsystem.dao.AnnouncementRepository;
+import com.tcsx.studentinfo.studentinformationsystem.dao.CourseRepository;
+import com.tcsx.studentinfo.studentinformationsystem.dao.LectureRepository;
+import com.tcsx.studentinfo.studentinformationsystem.dao.ProfessorRepository;
+import com.tcsx.studentinfo.studentinformationsystem.dao.ProgramRepository;
+import com.tcsx.studentinfo.studentinformationsystem.dao.StudentRepository;
 import com.tcsx.studentinfo.studentinformationsystem.exception.EntityNotFoundException;
+import com.tcsx.studentinfo.studentinformationsystem.model.Course;
+import com.tcsx.studentinfo.studentinformationsystem.model.Professor;
+import com.tcsx.studentinfo.studentinformationsystem.model.Program;
+import com.tcsx.studentinfo.studentinformationsystem.model.Student;
 
 @Service
 public class ProgramService {
-
-	private StudentService studentService;
-	private HashMap<String, Program> programs = new HashMap<>();
-
-	public ProgramService() {
-	}
-
-	//add sample data for tests
 	@Autowired
-	public ProgramService(StudentService studentService) {
-		this.setStudentService(studentService);
-		Program program = new Program("msis", "msis", null);
-		HashMap<Long, Student> students = studentService.getStudents();
-		Student student = students.get(1L);
-		program.setCourses(student.getCourses());
-		;
-		student.setProgram(program);
-		programs.put("msis", program);
+	private StudentRepository studentRepository;
+	@Autowired
+	private CourseRepository courseRepository;
+	@Autowired
+	private ProgramRepository programRepository;
+	@Autowired
+	private AnnouncementRepository announcementRepository;
+	@Autowired
+	private LectureRepository lectureRepository;
+	@Autowired
+	private ProfessorRepository professorRepository;
+	@Autowired
+	private AmazonSNSClient snsClient;  
+	@Autowired
+	private StudentService studentService;
+	@Autowired
+	private CourseService courseService;
+	
+
+	public Iterable<Program> findAll() {
+		return programRepository.findAll();
 	}
 
-	public HashMap<String, Program> findAll() {
-		return programs;
-	}
-
-	public Program getOne(String id) {
-		Program program = programs.get(id);
-		if (program == null) {
+	public Program findByProgramId(String id) throws EntityNotFoundException {
+		Optional<Program> program = programRepository.findById(id);
+		if (!program.isPresent()) {
 			throw new EntityNotFoundException(Program.class, id);
 		}
-		return program;
+		return program.get();
 	}
 
-	public Program deleteById(String id) {
-		Program program = programs.remove(id);
-		if (program == null) {
-			throw new EntityNotFoundException(Program.class, id);
-		}
-		return program;
+	public void deleteById(String id) {
+		programRepository.deleteById(id);
 	}
 
 	public Program save(Program program) {
-		return programs.put(program.getId(), program);
+		return programRepository.save(program);
 	}
 
-	public HashMap<String, Course> findAllCourses(String programId) {
-		return getOne(programId).getCourses();
-	}
-
-	public Course findCourseById(String programId, String courseId) {
-		Course course = findAllCourses(programId).get(courseId);
-		if (course == null) {
-			throw new EntityNotFoundException(Course.class, courseId);
+	public List<Course> findAllCourses(String programId) {
+		List<Course> courses = new LinkedList<>();
+		Set<String> courseIds = findByProgramId(programId).getCourses();
+		for (String courseId : courseIds) {
+			courses.add(courseRepository.findById(courseId).get());
 		}
-		return course;
+		return courses;
 	}
+
 
 	public Course addCourse(String programId, Course course) {
-		return getOne(programId).addCourse(course);
+		Program program = findByProgramId(programId);
+		program.addCourse(course);
+		programRepository.save(program);
+		for (String studentId : course.getStudents().keySet()) {
+			Student student = studentService.findById(studentId);
+			student.addCourse(course.getId());
+		}
+		try {
+			Professor professor = courseService.getProfessorOfACourse(course);
+			professor.addCourse(course);
+			professorRepository.save(professor);
+		} catch (EntityNotFoundException e) {
+		}
+		CreateTopicResult createTopicResult = snsClient.createTopic(course.getId());
+		String topicArn = createTopicResult.getTopicArn();
+		course.setTopicArn(topicArn);
+		return courseRepository.save(course);
 	}
 
 	public Course deleteCourseById(String programId, String courseId) {
-		Course course = getOne(programId).deleteCourseById(courseId);
-		;
-		if (course == null) {
-			throw new EntityNotFoundException(Course.class, courseId);
+		Program program = findByProgramId(programId);
+		program.deleteCourseById(courseId);
+		programRepository.save(program);
+		Course course = courseService.findCourseById(courseId);
+		HashMap<String, String> students = course.getStudents();
+		for (String studentId : students.keySet()) {
+			Student student =studentService.findById(studentId);
+			student.deleteCourseById(courseId);
+			studentRepository.save(student);
 		}
+		Set<String> lectures = course.getLectures();
+		for (String lectureId : lectures) {
+			lectureRepository.deleteById(lectureId);
+		}
+		
+		Set<String> announcements = course.getAnnouncements();
+		for (String announcementId : announcements) {
+			announcementRepository.deleteById(announcementId);
+		}
+		
+		try {
+			Professor professor = courseService.getProfessorOfACourse(course); 
+			professor.deleteCourseById(courseId);
+			professorRepository.save(professor);
+		} catch (EntityNotFoundException e) { }
+		
+		snsClient.deleteTopic(course.getTopicArn());
+		courseRepository.deleteById(courseId);
 		return course;
 	}
-
-	public HashMap<Long, Student> getAllStudentsOfACourse(String programId, String courseId) {
-		return findCourseById(programId, courseId).getStudents();
-	}
-
-	public Student getStudentByIdOfACourse(String programId, String courseId, long studentId) {
-		Student student = getAllStudentsOfACourse(programId, courseId).get(studentId);
-		if (student == null) {
-			throw new EntityNotFoundException(Student.class, studentId);
-		}
-		return student;
-	}
-
-	public Student addStudentOfACourse(String programId, String courseId, Student student) {
-		return findCourseById(programId, courseId).addStudent(student);
-	}
-
-	public Student deleteStudentByIdOfACourse(String programId, String courseId, long studentId) {
-		Student student = findCourseById(programId, courseId).deleteStudentById(studentId);
-		if (student == null) {
-			throw new EntityNotFoundException(Student.class, studentId);
-		}
-		return student;
-	}
-
-	public HashMap<Long, Lecture> getAllLecturesOfACourse(String programId, String courseId) {
-		return findCourseById(programId, courseId).getLectures();
-	}
-
-	public Lecture getLectureByIdOfACourse(String programId, String courseId, long lectureId) {
-		Lecture lecture = findCourseById(programId, courseId).getLectureById(lectureId);
-		if (lecture == null) {
-			throw new EntityNotFoundException(Lecture.class, lectureId);
-		}
-		return lecture;
-	}
-
-	public Lecture addLectureOfACourse(String programId, String courseId, Lecture lecture) {
-		return findCourseById(programId, courseId).addLecture(lecture);
-	}
-
-	public Lecture deleteLectureByIdOfACourse(String programId, String courseId, long lectureId) {
-		Lecture lecture = findCourseById(programId, courseId).deleteLectureById(lectureId);
-		if (lecture == null) {
-			throw new EntityNotFoundException(Lecture.class, lectureId);
-		}
-		return lecture;
-	}
-
-	public StudentService getStudentService() {
-		return studentService;
-	}
-
-	public void setStudentService(StudentService studentService) {
-		this.studentService = studentService;
-	}
-
-	public HashMap<Long, Material> getMaterials(String programId, String courseId, long lectureId) {
-		return getLectureByIdOfACourse(programId, courseId, lectureId).getMaterials();
-	}
 	
 	
-	public Material addMaterial(String programId, String courseId, long lectureId, Material material) {
-		return getMaterials(programId, courseId, lectureId).put(material.getId(), material);
-	}
-	
-	public Material deleteMaterial(String programId, String courseId, 
-			long lectureId, long materialId) {
-		return getMaterials(programId, courseId, lectureId).remove(materialId);
-	}
-	
-	public Material getMaterialById(String programId, String courseId, 
-			long lectureId, long materialId) {
-		return getMaterials(programId, courseId, lectureId).get(materialId);
-	}
-	
-	public HashMap<Long, Note> getNotes(String programId, String courseId, long lectureId) {
-		return getLectureByIdOfACourse(programId, courseId, lectureId).getNotes();
-	}
-	
-	
-	public Note addNote(String programId, String courseId, long lectureId, Note note) {
-		return getNotes(programId, courseId, lectureId).put(note.getId(), note);
-	}
-	
-	public Note deleteNote(String programId, String courseId, 
-			long lectureId, long noteId) {
-		return getNotes(programId, courseId, lectureId).remove(noteId);
-	}
-	
-	public Note getNoteById(String programId, String courseId, 
-			long lectureId, long noteId) {
-		return getNotes(programId, courseId, lectureId).get(noteId);
-	}
 
 }

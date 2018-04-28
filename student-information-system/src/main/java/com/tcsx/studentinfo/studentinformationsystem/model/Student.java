@@ -28,12 +28,19 @@ public class Student {
 	private String program;
 	@DynamoDBAttribute
 	private String email;
+	@DynamoDBAttribute
+	private int tuition;
+	@DynamoDBAttribute
+	private boolean active;
 	
 	public Student() {
 		courses = new HashSet<>();
+		tuition = 0;
+		active = true;
 	}
 	
-	public Student(String studentId, String name, String image, Set<String> courses, String program, String email) {
+	public Student(String studentId, String name, String image, Set<String> courses, 
+			String program, String email, int tuition) {
 		
 		super();
 		this.studentId = studentId;
@@ -42,6 +49,7 @@ public class Student {
 		this.courses = courses;
 		this.program = program;
 		this.email = email;
+		this.tuition = tuition;
 	}
 	
 	public String getEmail() {
@@ -50,6 +58,15 @@ public class Student {
 
 	public void setEmail(String email) {
 		this.email = email;
+	}
+
+	
+	public boolean isActive() {
+		return active;
+	}
+
+	public void setActive(boolean active) {
+		this.active = active;
 	}
 
 	public boolean deleteCourseById(String id) {
@@ -86,6 +103,16 @@ public class Student {
 
 	public String getName() {
 		return name;
+	}
+	
+	
+
+	public int getTuition() {
+		return tuition;
+	}
+
+	public void setTuition(int tuition) {
+		this.tuition = tuition;
 	}
 
 	public void setName(String name) {

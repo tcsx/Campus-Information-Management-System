@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.amazonaws.services.sns.AmazonSNSClient;
+import com.amazonaws.services.sns.model.Subscription;
 import com.tcsx.studentinfo.studentinformationsystem.dao.AnnouncementRepository;
 import com.tcsx.studentinfo.studentinformationsystem.dao.CourseRepository;
 import com.tcsx.studentinfo.studentinformationsystem.dao.LectureRepository;
@@ -165,6 +166,18 @@ public class CourseService {
 		Student student = getStudentById(studentId);
 		student.deleteCourseById(courseId);
 		courseRepository.save(course);
+		String arn = "";
+		List<Subscription> list = snsClient.listSubscriptionsByTopic(course.getTopicArn())
+				.getSubscriptions();
+		for (Subscription subscription : list) {
+			if (subscription.getEndpoint().equals(student.getEmail())) {
+				arn = subscription.getSubscriptionArn();
+				break;
+			}
+		}
+		if (arn.length() > 0) {
+			snsClient.unsubscribe(arn);
+		}
 		return studentRepository.save(student);
 	}
 	
